@@ -111,3 +111,15 @@ screenshots/*.webm
 
 replays/
 .vscode/settings.json
+
+old_agents/*
+perceptron/*
+cnn/*
+screenshots/*
+replays/*
+.vscode/*
+*.h5
+*.npy
+*.pb
+*.index
+*.data-00000-of-00001
