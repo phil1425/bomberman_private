@@ -9,6 +9,7 @@ class CircularArray:
     def __init__(self, shape):
         """Store buffer in given storage."""
         self.buffer = np.zeros(shape)
+        self.populated = np.zeros(shape[0])
         self.low = 0
         self.high = 0
         self.size = shape[0]
@@ -33,6 +34,7 @@ class CircularArray:
         else:
             self.count += 1
         self.buffer[self.high] = value
+        self.populated[self.high] = 1
         self.high = (self.high + 1) % self.size
     
     def remove(self):
@@ -40,9 +42,23 @@ class CircularArray:
         if self.count == 0:
             raise Exception ("Circular Buffer is empty");
         value = self.buffer[self.low]
+        self.populated[self.low] = 0
         self.low = (self.low + 1) % self.size
         self.count -= 1
         return value
+
+    def as_array(self):
+        if self.isFull():
+            return self.buffer
+        else:
+            return self.buffer[self.populated==1]
+    
+    def recall(self):
+        out_array = np.zeros(self.count)
+        for i, item in enumerate(self):
+            out_array[i] = item
+        return out_array
+
     
     def __iter__(self):
         """Return elements in the circular buffer in order using iterator."""

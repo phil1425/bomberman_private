@@ -123,3 +123,8 @@ replays/*
 *.pb
 *.index
 *.data-00000-of-00001
+agent_code/bernd-mumme_philipp-kollenz_vincent-mader.zip
+action.p
+game_state.p
+agent_code/baseline_1/policy.p
+agent_code/curiosity_3/policy.p
