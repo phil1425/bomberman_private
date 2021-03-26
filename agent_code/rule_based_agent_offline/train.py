@@ -3,12 +3,14 @@ import random
 from collections import namedtuple, deque
 from typing import List
 
+import numpy as np
+
 import events as e
-from .callbacks import state_to_features
+# from .callbacks import state_to_features
 
 # This is only an example!
-Transition = namedtuple('Transition',
-                        ('state', 'action', 'next_state', 'reward'))
+# Transition = namedtuple('Transition',
+#                         ('state', 'action', 'next_state', 'reward'))
 
 # Hyper parameters -- DO modify
 TRANSITION_HISTORY_SIZE = 3  # keep only ... last transitions
@@ -17,6 +19,8 @@ RECORD_ENEMY_TRANSITIONS = 1.0  # record enemy transitions with probability ...
 # Events
 PLACEHOLDER_EVENT = "PLACEHOLDER"
 
+X = []
+Y = []
 
 def setup_training(self):
     """
@@ -28,7 +32,7 @@ def setup_training(self):
     """
     # Example: Setup an array that will note transition tuples
     # (s, a, r, s')
-    self.transitions = deque(maxlen=TRANSITION_HISTORY_SIZE)
+    # self.transitions = deque(maxlen=TRANSITION_HISTORY_SIZE)
 
 
 def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_state: dict, events: List[str]):
@@ -51,12 +55,14 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     self.logger.debug(f'Encountered game event(s) {", ".join(map(repr, events))} in step {new_game_state["step"]}')
 
     # Idea: Add your own events to hand out rewards
-    if ...:
-        events.append(PLACEHOLDER_EVENT)
+    # if ...:
+    #     events.append(PLACEHOLDER_EVENT)
 
     # state_to_features is defined in callbacks.py
-    self.transitions.append(Transition(state_to_features(old_game_state), self_action, state_to_features(new_game_state), reward_from_events(self, events)))
-
+    if (np.random.choice(np.arange(0, 5, 1)) == 3) and (old_game_state != None):
+        # self.transitions.append(Transition(state_to_features(old_game_state), self_action, state_to_features(new_game_state), reward_from_events(self, events)))
+        X.append(old_game_state)
+        Y.append(self_action)
 
 def end_of_round(self, last_game_state: dict, last_action: str, events: List[str]):
     """
@@ -71,28 +77,32 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     :param self: The same object that is passed to all of your callbacks.
     """
     self.logger.debug(f'Encountered event(s) {", ".join(map(repr, events))} in final step')
-    self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
+    # self.transitions.append(Transition(state_to_features(last_game_state), last_action, None, reward_from_events(self, events)))
 
     # Store the model
-    with open("my-saved-model.pt", "wb") as file:
-        pickle.dump(self.model, file)
+    # with open("my-saved-model.pt", "wb") as file:
+    #     pickle.dump(self.model, file)
+    if last_game_state["round"]%50 == 0:
+        with open("featureset.pt", "wb") as file:
+            pickle.dump(X, file)
+        with open("labelset.pt", "wb") as file2:
+            pickle.dump(Y, file2)
 
+# def reward_from_events(self, events: List[str]) -> int:
+#     """
+#     *This is not a required function, but an idea to structure your code.*
 
-def reward_from_events(self, events: List[str]) -> int:
-    """
-    *This is not a required function, but an idea to structure your code.*
-
-    Here you can modify the rewards your agent get so as to en/discourage
-    certain behavior.
-    """
-    game_rewards = {
-        e.COIN_COLLECTED: 1,
-        e.KILLED_OPPONENT: 5,
-        PLACEHOLDER_EVENT: -.1  # idea: the custom event is bad
-    }
-    reward_sum = 0
-    for event in events:
-        if event in game_rewards:
-            reward_sum += game_rewards[event]
-    self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
-    return reward_sum
+#     Here you can modify the rewards your agent get so as to en/discourage
+#     certain behavior.
+#     """
+#     game_rewards = {
+#         e.COIN_COLLECTED: 1,
+#         e.KILLED_OPPONENT: 5,
+#         PLACEHOLDER_EVENT: -.1  # idea: the custom event is bad
+#     }
+#     reward_sum = 0
+#     for event in events:
+#         if event in game_rewards:
+#             reward_sum += game_rewards[event]
+#     self.logger.info(f"Awarded {reward_sum} for events {', '.join(events)}")
+#     return reward_sum
