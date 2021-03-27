@@ -1,7 +1,7 @@
 import numpy as np
 import pickle
 
-PADCONST = 3
+
 
 featurepickle = open("./featureset_large.pt", "rb")
 labelpickle = open("./labelset_large.pt", "rb")
@@ -16,209 +16,242 @@ cols = ["Step Number", "Sum of crates radius 1", "Sum of crates radius 2", "Agen
         "Next coin rel y", "Bomb possible", "Agent score", "Other Agent 1 score", "Other Agent 2 score", "Other Agent 3 score",
         "Sum all crates", "Crates around next coin", "Crates around next agent", "Agent at left/right border", "Agent at top/bottom border"]
 
-for idx, game_state in enumerate(gamestates):
+class feature_selector():
+    def __init__(self, game_state):
+        self.game_state = game_state
+        self.PADCONST = 3
 
-    # if idx == 2:
-    #     break
-    features = []
+        self.features = []
+
+        self.field = self.game_state['field']
+        self.walls = (self.game_state['field'] == -1).astype(int)
+        self.walls_padded = np.pad(self.walls, self.PADCONST, 'edge')
+        self.crates = (self.game_state['field'] == 1).astype(int)
+        self.crates_padded = np.pad(self.crates, self.PADCONST, 'edge')
+
+        self.agent_pos = self.game_state['self'][3]
+        self.agent_pos_x = self.agent_pos[0]
+        self.agent_pos_y = self.agent_pos[1]
+        self.agent_pos_x_pad = self.agent_pos_x + self.PADCONST
+        self.agent_pos_y_pad = self.agent_pos_y + self.PADCONST
+
+
+# for idx, game_state in enumerate(gamestates):
+
+#     # if idx == 2:
+#     #     break
+#     features = []
     
-    print(f"##########################\n\n Extracting feature {idx}\n\n##########################")
+#     print(f"##########################\n\n Extracting feature {idx}\n\n##########################")
 
 
-    field = game_state['field']
-    walls = (game_state['field'] == -1).astype(int)
-    walls_padded = np.pad(walls, PADCONST, 'edge')
-    crates = (game_state['field'] == 1).astype(int)
-    crates_padded = np.pad(crates, PADCONST, 'edge')
+    # self.field = game_state['field']
+    # self.walls = (game_state['field'] == -1).astype(int)
+    # self.walls_padded = np.pad(self.walls, self.PADCONST, 'edge')
+    # crates = (game_state['field'] == 1).astype(int)
+    # crates_padded = np.pad(self.crates, self.PADCONST, 'edge')
 
-    # print(field, "\n", walls, "\n", walls_padded, "\n", crates, "\n", crates_padded)
-
-    agent_pos = game_state['self'][3]
-    agent_pos_x = agent_pos[0]
-    agent_pos_y = agent_pos[1]
-    agent_pos_x_pad = agent_pos_x + PADCONST
-    agent_pos_y_pad = agent_pos_y + PADCONST
+    # print(field, "\n", self.walls, "\n", self.walls_padded, "\n", crates, "\n", crates_padded)
 
 
-    # Current Step Number
-    step_number = game_state['step']
-    features.append(step_number)
+    # def base_vars(game_state):
+    #     self.agent_pos = game_state['self'][3]
+    #     self.agent_pos_x = self.agent_pos[0]
+    #     self.agent_pos_y = self.agent_pos[1]
+    #     self.agent_pos_x_pad = self.agent_pos_x + self.PADCONST
+    #     self.agent_pos_y_pad = self.agent_pos_y + self.PADCONST
 
-    # Sum of crates in radius 1 around agent
-    features.append(np.sum(crates_padded[agent_pos_x_pad-1:agent_pos_x_pad+1, agent_pos_y_pad-1:agent_pos_y_pad+1]))
+    def current_step(self):
+        # Current Step Number
+        step_number = self.game_state['step']
+        self.features.append(step_number)
 
-    # Sum of crates in radius 2 around agent
-    features.append(np.sum(crates_padded[agent_pos_x_pad-2:agent_pos_x_pad+2, agent_pos_y_pad-2:agent_pos_y_pad+2]))
 
-    # Agent in explosion zone (bool)
-    bomb_map = np.zeros((17+2*PADCONST, 17+2*PADCONST))
-    bomb_cooldowns = [x[1] for x in game_state['bombs']]
-    bomb_idx_sorted = np.flip(np.argsort(bomb_cooldowns))
+    def sum_of_crates_around_agent(self):
+        # Sum of crates in radius 1 around agent
+        self.features.append(np.sum(self.crates_padded[self.agent_pos_x_pad-1:self.agent_pos_x_pad+1, self.agent_pos_y_pad-1:self.agent_pos_y_pad+1]))
 
-    for idx in bomb_idx_sorted:
-        bomb = game_state['bombs'][idx]
-        b_x = bomb[0][0]
-        b_y = bomb[0][1]
-        if np.sum(walls[b_x-1:b_x+1, b_y]) == 2:
-            bomb_map[b_x + PADCONST, b_y:b_y + PADCONST + 4] = bomb[1]
-        elif np.sum(walls[b_x, b_y-1:b_y+1]) == 2:
-            bomb_map[b_x:b_x + PADCONST + 4, b_y + PADCONST] = bomb[1]
+        # Sum of self.crates in radius 2 around agent
+        self.features.append(np.sum(self.crates_padded[self.agent_pos_x_pad-2:self.agent_pos_x_pad+2, self.agent_pos_y_pad-2:self.agent_pos_y_pad+2]))
+
+    def agent_in_explosion_zone(self):
+        # Agent in explosion zone (bool)
+        bomb_map = np.zeros((17+2*self.PADCONST, 17+2*self.PADCONST))
+        bomb_cooldowns = [x[1] for x in self.game_state['bombs']]
+        bomb_idx_sorted = np.flip(np.argsort(bomb_cooldowns))
+
+        for idx in bomb_idx_sorted:
+            bomb = self.game_state['bombs'][idx]
+            b_x = bomb[0][0]
+            b_y = bomb[0][1]
+            if np.sum(self.walls[b_x-1:b_x+1, b_y]) == 2:
+                bomb_map[b_x + self.PADCONST, b_y:b_y + self.PADCONST + 4] = bomb[1]
+            elif np.sum(self.walls[b_x, b_y-1:b_y+1]) == 2:
+                bomb_map[b_x:b_x + self.PADCONST + 4, b_y + self.PADCONST] = bomb[1]
+            else:
+                bomb_map[b_x:b_x + self.PADCONST + 4, b_y + self.PADCONST] = bomb[1]
+                bomb_map[b_x + self.PADCONST, b_y:b_y + self.PADCONST + 4] = bomb[1]
+        
+        self.features.append(bomb_map[self.agent_pos_x_pad, self.agent_pos_y_pad])
+
+    def crates_and_agents_explode(self):
+        # Crates that explode if bomb is placed at current location
+        custom_bomb_map = np.zeros((17+2*self.PADCONST, 17+2*self.PADCONST))
+
+        b_x = self.agent_pos_x_pad
+        b_y = self.agent_pos_y_pad
+        if np.sum(self.walls_padded[b_x-1:b_x+1, b_y]) == 2:
+            custom_bomb_map[b_x + self.PADCONST, b_y:b_y + self.PADCONST + 4] = 1
+        elif np.sum(self.walls_padded[b_x, b_y-1:b_y+1]) == 2:
+            custom_bomb_map[b_x:b_x + self.PADCONST + 4, b_y + self.PADCONST] = 1
         else:
-            bomb_map[b_x:b_x + PADCONST + 4, b_y + PADCONST] = bomb[1]
-            bomb_map[b_x + PADCONST, b_y:b_y + PADCONST + 4] = bomb[1]
-    
-    features.append(bomb_map[agent_pos_x_pad, agent_pos_y_pad])
+            custom_bomb_map[b_x:b_x + self.PADCONST + 4, b_y + self.PADCONST] = 1
+            custom_bomb_map[b_x + self.PADCONST, b_y:b_y + self.PADCONST + 4] = 1
 
-    # Crates that explode if bomb is placed at current location
-    custom_bomb_map = np.zeros((17+2*PADCONST, 17+2*PADCONST))
+        self.features.append(np.sum(custom_bomb_map*self.crates_padded))
 
-    b_x = agent_pos_x_pad
-    b_y = agent_pos_y_pad
-    if np.sum(walls_padded[b_x-1:b_x+1, b_y]) == 2:
-        custom_bomb_map[b_x + PADCONST, b_y:b_y + PADCONST + 4] = 1
-    elif np.sum(walls_padded[b_x, b_y-1:b_y+1]) == 2:
-        custom_bomb_map[b_x:b_x + PADCONST + 4, b_y + PADCONST] = 1
-    else:
-        custom_bomb_map[b_x:b_x + PADCONST + 4, b_y + PADCONST] = 1
-        custom_bomb_map[b_x + PADCONST, b_y:b_y + PADCONST + 4] = 1
+        # Number of agents that explode if bomb is placed at current location (and agent doesn't move)
+        for agent in self.game_state['others']:
+            other_agent_pos = agent[3]
+            other_agent_pos_x = other_agent_pos[0]
+            other_agent_pos_y = other_agent_pos[1]
+            agents_in_explosion_radius = 0
+            if custom_bomb_map[other_agent_pos_x][other_agent_pos_y] == 1:
+                agents_in_explosion_radius += 1
+        self.features.append(agents_in_explosion_radius)
 
-    features.append(np.sum(custom_bomb_map*crates_padded))
+    def distance_from_bomb_and_cooldown(self):
+        # Agent straight distance from next bomb (4 if bomb further away than 4) and its cooldown
+        bomb_distance = 4
+        bomb_cooldown = 4
 
-    # Number of agents that explode if bomb is placed at current location (and agent doesn't move)
-    for agent in game_state['others']:
-        other_agent_pos = agent[3]
-        other_agent_pos_x = other_agent_pos[0]
-        other_agent_pos_y = other_agent_pos[1]
-        agents_in_explosion_radius = 0
-        if custom_bomb_map[other_agent_pos_x][other_agent_pos_y] == 1:
-            agents_in_explosion_radius += 1
-    features.append(agents_in_explosion_radius)
+        for bomb in self.game_state['bombs']:
+            if len(self.game_state['bombs'])==0:
+                break
+            else:
+                if np.sum(self.walls_padded[bomb[0][0]:bomb[0][0]+2*self.PADCONST, bomb[0][1]]) == 2 and bomb[1]==self.agent_pos_y:
+                    distance = abs(bomb[0][0] - self.agent_pos_x)
+                    cooldown = bomb[1]
+                    if distance < bomb_distance:
+                        bomb_distance = distance
+                    if cooldown < bomb_cooldown:
+                        bomb_cooldown = cooldown
+                elif np.sum(self.walls_padded[bomb[0][0], bomb[0][1]+2*self.PADCONST:bomb[0][1]]) == 2 and bomb[0]==self.agent_pos_x:
+                    distance = abs(bomb[0][1] - self.agent_pos_y)
+                    cooldown = bomb[1]
+                    if distance < bomb_distance:
+                        bomb_distance = distance
+                    if cooldown < bomb_cooldown:
+                        bomb_cooldown = cooldown
+                elif bomb[0][0]==self.agent_pos_x:
+                    distance = abs(bomb[1] - self.agent_pos_y)
+                    cooldown = bomb[1]
+                    if distance < bomb_distance:
+                        bomb_distance = distance
+                    if cooldown < bomb_cooldown:
+                        bomb_cooldown = cooldown
+                elif bomb[0][1]==self.agent_pos_y:
+                    distance = abs(bomb[0][0] - self.agent_pos_x)   
+                    cooldown = bomb[1] 
+                    if distance < bomb_distance:
+                        bomb_distance = distance
+                    if cooldown < bomb_cooldown:
+                        bomb_cooldown = cooldown
 
-    # Agent straight distance from next bomb (4 if bomb further away than 4) and its cooldown
-    bomb_distance = 4
-    bomb_cooldown = 4
+        self.features.append(bomb_distance)
+        self.features.append(bomb_cooldown)
 
-    for bomb in game_state['bombs']:
-        if len(game_state['bombs'])==0:
-            break
-        else:
-            if np.sum(walls_padded[bomb[0][0]:bomb[0][0]+2*PADCONST, bomb[0][1]]) == 2 and bomb[1]==agent_pos_y:
-                distance = abs(bomb[0][0] - agent_pos_x)
-                cooldown = bomb[1]
-                if distance < bomb_distance:
-                    bomb_distance = distance
-                if cooldown < bomb_cooldown:
-                    bomb_cooldown = cooldown
-            elif np.sum(walls_padded[bomb[0][0], bomb[0][1]+2*PADCONST:bomb[0][1]]) == 2 and bomb[0]==agent_pos_x:
-                distance = abs(bomb[0][1] - agent_pos_y)
-                cooldown = bomb[1]
-                if distance < bomb_distance:
-                    bomb_distance = distance
-                if cooldown < bomb_cooldown:
-                    bomb_cooldown = cooldown
-            elif bomb[0][0]==agent_pos_x:
-                distance = abs(bomb[1] - agent_pos_y)
-                cooldown = bomb[1]
-                if distance < bomb_distance:
-                    bomb_distance = distance
-                if cooldown < bomb_cooldown:
-                    bomb_cooldown = cooldown
-            elif bomb[0][1]==agent_pos_y:
-                distance = abs(bomb[0][0] - agent_pos_x)   
-                cooldown = bomb[1] 
-                if distance < bomb_distance:
-                    bomb_distance = distance
-                if cooldown < bomb_cooldown:
-                    bomb_cooldown = cooldown
+    def distance_and_rel_coords_next_agent(self):
+        # L1-distance to next agent
+        distance_to_next_agent = 30
+        closest_agent_x = 0
+        closest_agent_y = 0
+        for agent in self.game_state['others']:
+            other_agent_pos = agent[3]
+            other_agent_pos_x = other_agent_pos[0]
+            other_agent_pos_y = other_agent_pos[1]
+            distance_btw_agents = abs(other_agent_pos_x - self.agent_pos_x) + abs(other_agent_pos_y - self.agent_pos_y)
+            if distance_btw_agents < distance_to_next_agent:
+                distance_to_next_agent = distance_btw_agents
+                closest_agent_x = other_agent_pos_x
+                closest_agent_y = other_agent_pos_y
+        self.features.append(distance_to_next_agent)
 
-    features.append(bomb_distance)
-    features.append(bomb_cooldown)
+        # Relative coordinates of next agent
+        self.features.append(closest_agent_x - self.agent_pos_x)
+        self.features.append(closest_agent_y - self.agent_pos_y)
 
-    # L1-distance to next agent
-    distance_to_next_agent = 30
-    closest_agent_x = 0
-    closest_agent_y = 0
-    for agent in game_state['others']:
-        other_agent_pos = agent[3]
-        other_agent_pos_x = other_agent_pos[0]
-        other_agent_pos_y = other_agent_pos[1]
-        distance_btw_agents = abs(other_agent_pos_x - agent_pos_x) + abs(other_agent_pos_y - agent_pos_y)
-        if distance_btw_agents < distance_to_next_agent:
-            distance_to_next_agent = distance_btw_agents
-            closest_agent_x = other_agent_pos_x
-            closest_agent_y = other_agent_pos_y
-    features.append(distance_to_next_agent)
+    def coins_in_radius_3(self):
+        # Coins in radius 3
+        coins_in_radius = 0
+        for coin in self.game_state['coins']:
+            if coin[0]+self.PADCONST in range(self.agent_pos_x_pad - 3, self.agent_pos_x_pad + 3) and coin[1]+self.PADCONST in range(self.agent_pos_y_pad - 3, self.agent_pos_y + 3):
+                coins_in_radius += 1
+        self.features.append(coins_in_radius)
 
-    # Relative coordinates of next agent
-    features.append(closest_agent_x - agent_pos_x)
-    features.append(closest_agent_y - agent_pos_y)
+    def distance_and_rel_coords_coin(self):
+        # L1-distance to next coin
+        distance_to_next_coin = 30
+        closest_coin_x = 0
+        closest_coin_y = 0
+        for coin in self.game_state['coins']:
+            coin_x = coin[0]
+            coin_y = coin[1]
+            distance_to_coins = abs(coin_x - self.agent_pos_x) + abs(coin_y - self.agent_pos_y)
+            if distance_to_coins < distance_to_next_coin:
+                distance_to_next_coin = distance_to_coins
+                closest_coin_x = coin_x
+                closest_coin_y = coin_y
+        self.features.append(distance_to_next_coin)
 
-    # Coins in radius 3
-    coins_in_radius = 0
-    for coin in game_state['coins']:
-        if coin[0]+PADCONST in range(agent_pos_x_pad - 3, agent_pos_x_pad + 3) and coin[1]+PADCONST in range(agent_pos_y_pad - 3, agent_pos_y + 3):
-            coins_in_radius += 1
-    features.append(coins_in_radius)
+        # Relative coordinates of next coin
+        self.features.append(closest_coin_x - self.agent_pos_x)
+        self.features.append(closest_coin_y - self.agent_pos_y)
 
+    def bomb_possible(self):
+        # Is bomb setting possible?
+        bomb_possible = self.game_state['self'][2]
+        self.features.append(bomb_possible)
 
-    # L1-distance to next coin
-    distance_to_next_coin = 30
-    closest_coin_x = 0
-    closest_coin_y = 0
-    for coin in game_state['coins']:
-        coin_x = coin[0]
-        coin_y = coin[1]
-        distance_to_coins = abs(coin_x - agent_pos_x) + abs(coin_y - agent_pos_y)
-        if distance_to_coins < distance_to_next_coin:
-            distance_to_next_coin = distance_to_coins
-            closest_coin_x = coin_x
-            closest_coin_y = coin_y
-    features.append(distance_to_next_coin)
+    def scores(self):
+        # Agent score
+        agent_score = self.game_state['self'][1]
+        self.features.append(agent_score)
 
-    # Relative coordinates of next coin
-    features.append(closest_coin_x - agent_pos_x)
-    features.append(closest_coin_y - agent_pos_y)
+        # Other agents scores
+        other_agent_scores = [0, 0, 0]
+        for idx, agent in enumerate(self.game_state['others']):
+            other_agent_scores[idx] = agent[1]
+        other_agent_scores = np.sort(other_agent_scores)
+        for idx, agent_score in enumerate(other_agent_scores):
+            self.features.append(agent_score)
 
-    # Is bomb setting possible?
-    bomb_possible = game_state['self'][2]
-    features.append(bomb_possible)
+    def sum_crates(self):
+        # Sum of all crates
+        crate_sum = np.sum(self.crates)
+        self.features.append(crate_sum)
 
-    # Agent score
-    agent_score = game_state['self'][1]
-    features.append(agent_score)
+    def crates_around_coin_and_agent(self.game_state):
+        # Crates in radius 1 around next coin
+        self.features.append(np.sum(self.crates_padded[closest_coin_x+self.PADCONST-1:closest_coin_x+self.PADCONST+1, closest_coin_y+self.PADCONST-1:closest_coin_y+self.PADCONST+1]))
 
-    # Other agents scores
-    other_agent_scores = [0, 0, 0]
-    for idx, agent in enumerate(game_state['others']):
-        other_agent_scores[idx] = agent[1]
-    other_agent_scores = np.sort(other_agent_scores)
-    for idx, agent_score in enumerate(other_agent_scores):
-        features.append(agent_score)
-
-    # Sum of all crates
-    crate_sum = np.sum(crates)
-    features.append(crate_sum)
-
-    # Crates in radius 1 around next coin
-    features.append(np.sum(crates_padded[closest_coin_x+PADCONST-1:closest_coin_x+PADCONST+1, closest_coin_y+PADCONST-1:closest_coin_y+PADCONST+1]))
-
-    # Crates in radius 1 around next agent
-    features.append(np.sum(crates_padded[closest_agent_x+PADCONST-1:closest_agent_x+PADCONST+1, closest_agent_y+PADCONST-1:closest_agent_y+PADCONST+1]))
+        # Crates in radius 1 around next agent
+        self.features.append(np.sum(self.crates_padded[closest_agent_x+self.PADCONST-1:closest_agent_x+self.PADCONST+1, closest_agent_y+self.PADCONST-1:closest_agent_y+self.PADCONST+1]))
 
     # Space free of crates in each direction
 
+    def agent_at_border(self):
+        # Agent is at left/right border (bool)
+        agent_at_leftright_border = 1 if (np.sum(self.walls_padded[self.agent_pos_x_pad-3:self.agent_pos_x_pad,self.agent_pos_y])==3 or np.sum(self.walls_padded[self.agent_pos_x_pad:self.agent_pos_x_pad+3, self.agent_pos_y_pad])==3) else 0
+        self.features.append(agent_at_leftright_border)
 
-    # Agent is at left/right border (bool)
-    agent_at_leftright_border = 1 if (np.sum(walls_padded[agent_pos_x_pad-3:agent_pos_x_pad,agent_pos_y])==3 or np.sum(walls_padded[agent_pos_x_pad:agent_pos_x_pad+3, agent_pos_y_pad])==3) else 0
-    features.append(agent_at_leftright_border)
-
-    # Agent is at top/bottom border (bool)
-    agent_at_topbottom_border = 1 if (np.sum(walls_padded[agent_pos_x_pad,agent_pos_y-3:agent_pos_y_pad])==3 or np.sum(walls_padded[agent_pos_x_pad, agent_pos_y_pad:agent_pos_y_pad+3])==3) else 0
-    features.append(agent_at_topbottom_border)
-    all_features.append(features)
+        # Agent is at top/bottom border (bool)
+        agent_at_topbottom_border = 1 if (np.sum(self.walls_padded[self.agent_pos_x_pad,self.agent_pos_y-3:self.agent_pos_y_pad])==3 or np.sum(self.walls_padded[self.agent_pos_x_pad, self.agent_pos_y_pad:self.agent_pos_y_pad+3])==3) else 0
+        self.features.append(agent_at_topbottom_border)
+        all_features.append(features)
 
 
-all_features = np.array(all_features)
+# all_features = np.array(all_features)
 
 
 featurepickle.close()
