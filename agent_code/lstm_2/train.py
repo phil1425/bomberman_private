@@ -83,8 +83,8 @@ def game_events_occurred(self, old_game_state, action, new_game_state, events):
         self.old_features.append(self.exp_buffer)
         self.labels.append(to_labels(action))
 
-        self.game_state.append(old_game_state)
-        self.action.append(to_labels(action))
+        #self.game_state.append(old_game_state)
+        #self.action.append(to_labels(action))
 
 def end_of_round(self, last_game_state, last_action, events):
     self.logger.info(events)
