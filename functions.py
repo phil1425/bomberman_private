@@ -153,13 +153,13 @@ def minimal_features_2(game_state):
 
         bomb_map[b_x+3, b_y+3] = bomb[1]
 
-        if walls[b_x, b_y+1] <= 0:
+        if walls[b_x, b_y+1] >= 0:
             bomb_map[b_x+3, b_y+4:b_y+7] = bomb[1]
-        if walls[b_x, b_y-1] <= 0:
+        if walls[b_x, b_y-1] >= 0:
             bomb_map[b_x+3, b_y:b_y+2] = bomb[1]
-        if walls[b_x+1, b_y] <= 0:
+        if walls[b_x+1, b_y] >= 0:
             bomb_map[b_x+4:b_x+7, b_y+3] = bomb[1]
-        if walls[b_x-1, b_y] <= 0:
+        if walls[b_x-1, b_y] >= 0:
             bomb_map[b_x:b_x+3, b_y+3] = bomb[1]
 
     bombs_x = bomb_map[x+3, y+2:y+5]
@@ -408,7 +408,7 @@ if __name__ == '__main__':
 
     for state in states:
         plt.figure()
-        vis_field = state['field']
+        vis_field = state['field'].copy()
         x, y = state['self'][3]
         vis_field[x, y] = 3
 
@@ -416,7 +416,6 @@ if __name__ == '__main__':
             bx, by = bomb[0]
             vis_field[bx, by] = 2
         plt.imshow(vis_field)
-        plt.draw()
         print(minimal_features_2(state))
         plt.show()
     
