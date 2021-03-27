@@ -83,9 +83,9 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     # with open("my-saved-model.pt", "wb") as file:
     #     pickle.dump(self.model, file)
     if last_game_state["round"]%50 == 0:
-        with open("featureset.pt", "wb") as file:
+        with open("featureset_large.pt", "wb") as file:
             pickle.dump(X, file)
-        with open("labelset.pt", "wb") as file2:
+        with open("labelset_large.pt", "wb") as file2:
             pickle.dump(Y, file2)
 
 # def reward_from_events(self, events: List[str]) -> int:
