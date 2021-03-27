@@ -151,7 +151,7 @@ def minimal_features_2(game_state):
         b_x = bomb[0][0]
         b_y = bomb[0][1]
 
-        bomb_map[b_x, b_y] = bomb[1]
+        bomb_map[b_x+3, b_y+3] = bomb[1]
 
         if walls[b_x, b_y+1] <= 0:
             bomb_map[b_x+3, b_y+4:b_y+7] = bomb[1]
