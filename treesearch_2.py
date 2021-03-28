@@ -5,8 +5,8 @@ import pickle
 class Node():
     pass
 
-class MovementTree():
-    def __init__(self, game_state, max_free_spaces):
+class SurvivalTree():
+    def __init__(self, game_state):
         agent_coords = game_state['self'][3]
 
         self.root = Node()
@@ -20,22 +20,25 @@ class MovementTree():
         self.field = (game_state['field'] != 0).astype(int)
         self.walls = (game_state['field'] == -1).astype(int)
         self.bombs = game_state['bombs'].copy()
-        #self.bombs = [b for b in bombs if b[1] != 0]
 
         self.bomb_maps = []
-        self.bomb_maps.append(self.calc_bomb_map())
-        for t in range(1,5):
-            self.bomb_maps.append(np.clip(self.bomb_maps[0]-t, -2, 5))
+        for t in range(5):
+            self.bomb_maps.append(self.calc_bomb_map(t))
 
         self.num_survivable_spaces = [0 for _ in range(5)]
+        self.survived = [[] for _ in range(5)]
 
-    def calc_bomb_map(self):
+    def calc_bomb_map(self, t):
+
+        bombs = [(b[0], b[1]-t) for b in self.bombs]
+        bombs = [b for b in bombs if b[1] >= -1]
+
         bomb_map = np.zeros((17+6, 17+6))-2
-        bomb_cooldowns = [x[1] for x in self.bombs]
+        bomb_cooldowns = [x[1] for x in bombs]
         bomb_idx_sorted = np.flip(np.argsort(bomb_cooldowns))
 
         for idx in bomb_idx_sorted:
-            bomb = self.bombs[idx]
+            bomb = bombs[idx]
             b_x = bomb[0][0]
             b_y = bomb[0][1]
             if np.sum(self.walls[b_x-1:b_x+2, b_y]) == 2:
@@ -55,7 +58,6 @@ class MovementTree():
             new_nodes = self.get_next_nodes(node)
             stack.extend(new_nodes)
 
-        
         return self.num_survivable_spaces
 
     def get_next_nodes(self, node):
@@ -79,8 +81,9 @@ class MovementTree():
                 else:
                     new_node.direction = node.direction
 
-                if new_node.alive and new_node.time == 4:
+                if new_node.alive and new_node.time == 4 and new_node.coords not in self.survived[new_node.direction]:
                     self.num_survivable_spaces[new_node.direction] += 1
+                    self.survived[new_node.direction].append(new_node.coords)
 
                 if new_node.alive:
                     self.visited[new_node.time, new_node.coords[0], new_node.coords[1]] = new_node.direction
@@ -91,7 +94,7 @@ class MovementTree():
 if __name__ == '__main__':
     states = pickle.load(open('featureset.pt', 'rb'))
     for state in states:
-        test_tree = MovementTree(state, 20)
+        test_tree = SurvivalTree(state)
         spaces = test_tree.get_free_spaces()
         
         x, y = state['self'][3]
@@ -102,7 +105,7 @@ if __name__ == '__main__':
             bx, by = bomb[0]
             vis_field[bx, by] = 2
 
-        print('R - L - D - U')
+        print('D - R - U - L - W')
         print(spaces)
 
         fig = plt.figure(figsize=(12, 6))
@@ -112,13 +115,21 @@ if __name__ == '__main__':
         plt.subplot(332)
         plt.imshow(test_tree.bomb_maps[0]-test_tree.walls)
         plt.subplot(333)
-        plt.imshow(test_tree.visited[0]-test_tree.walls)
+        plt.imshow(test_tree.bomb_maps[1]-test_tree.walls)
         plt.subplot(334)
-        plt.imshow(test_tree.visited[1]-test_tree.walls)
+        plt.imshow(test_tree.bomb_maps[2]-test_tree.walls)
         plt.subplot(335)
-        plt.imshow(test_tree.visited[2]-test_tree.walls)
+        plt.imshow(test_tree.bomb_maps[3]-test_tree.walls)
         plt.subplot(336)
-        plt.imshow(test_tree.visited[3]-test_tree.walls)
-        plt.subplot(337)
-        plt.imshow(test_tree.visited[4]-test_tree.walls)
+        plt.imshow(test_tree.bomb_maps[4]-test_tree.walls)
+        #plt.subplot(333)
+        #plt.imshow(test_tree.visited[0]-test_tree.walls)
+        #plt.subplot(334)
+        #plt.imshow(test_tree.visited[1]-test_tree.walls)
+        #plt.subplot(335)
+        #plt.imshow(test_tree.visited[2]-test_tree.walls)
+        #plt.subplot(336)
+        #plt.imshow(test_tree.visited[3]-test_tree.walls)
+        #plt.subplot(337)
+        #plt.imshow(test_tree.visited[4]-test_tree.walls)
         plt.show()
