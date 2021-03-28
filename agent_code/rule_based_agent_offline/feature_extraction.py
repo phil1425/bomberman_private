@@ -1,7 +1,8 @@
 import numpy as np
+from treesearch import MovementTree
 
 class FeatureSelector():
-    
+
     def __init__(self, game_state=None):
         if game_state != None:
             self.setup(game_state)
@@ -43,16 +44,16 @@ class FeatureSelector():
     def agent_in_explosion_zone(self):
         # Agent in explosion zone (bool)
         bomb_map = np.zeros((17+2*self.PADCONST, 17+2*self.PADCONST))
-        bomb_cooldowns = [x[1] for x in self.game_state['bombs']]
+        bomb_cooldowns = [x[1] for x in self.game_state['bombs'] if x[1] != 0]
         bomb_idx_sorted = np.flip(np.argsort(bomb_cooldowns))
 
         for idx in bomb_idx_sorted:
             bomb = self.game_state['bombs'][idx]
             b_x = bomb[0][0]
             b_y = bomb[0][1]
-            if np.sum(self.walls[b_x-1:b_x+1, b_y]) == 2:
+            if np.sum(self.walls[b_x-1:b_x+2, b_y]) == 2:
                 bomb_map[b_x + self.PADCONST, b_y:b_y + self.PADCONST + 4] = bomb[1]
-            elif np.sum(self.walls[b_x, b_y-1:b_y+1]) == 2:
+            elif np.sum(self.walls[b_x, b_y-1:b_y+2]) == 2:
                 bomb_map[b_x:b_x + self.PADCONST + 4, b_y + self.PADCONST] = bomb[1]
             else:
                 bomb_map[b_x:b_x + self.PADCONST + 4, b_y + self.PADCONST] = bomb[1]
@@ -67,13 +68,13 @@ class FeatureSelector():
 
         b_x = self.agent_pos_x_pad
         b_y = self.agent_pos_y_pad
-        if np.sum(self.walls_padded[b_x-1:b_x+1, b_y]) == 2:
-            custom_bomb_map[b_x + self.PADCONST, b_y:b_y + self.PADCONST + 5] = 1
-        elif np.sum(self.walls_padded[b_x, b_y-1:b_y+1]) == 2:
-            custom_bomb_map[b_x:b_x + self.PADCONST + 5, b_y + self.PADCONST] = 1
+        if np.sum(self.walls_padded[b_x-1:b_x+2, b_y]) == 2:
+            custom_bomb_map[b_x, b_y-3:b_y+4] = 1
+        elif np.sum(self.walls_padded[b_x, b_y-1:b_y+2]) == 2:
+            custom_bomb_map[b_x-3:b_x+4, b_y] = 1
         else:
-            custom_bomb_map[b_x:b_x + self.PADCONST + 5, b_y + self.PADCONST] = 1
-            custom_bomb_map[b_x + self.PADCONST, b_y:b_y + self.PADCONST + 5] = 1
+            custom_bomb_map[b_x-3:b_x+4, b_y] = 1
+            custom_bomb_map[b_x, b_y-3:b_y+4] = 1
 
         self.features.append(np.sum(custom_bomb_map*self.crates_padded))
 
@@ -83,7 +84,7 @@ class FeatureSelector():
             other_agent_pos = agent[3]
             other_agent_pos_x = other_agent_pos[0]
             other_agent_pos_y = other_agent_pos[1]
-            if custom_bomb_map[other_agent_pos_x][other_agent_pos_y] == 1:
+            if custom_bomb_map[other_agent_pos_x + self.PADCONST][other_agent_pos_y + self.PADCONST] == 1:
                 agents_in_explosion_radius += 1
         self.features.append(agents_in_explosion_radius)
 
@@ -93,7 +94,7 @@ class FeatureSelector():
         bomb_distance = 4
         bomb_cooldown = 4
 
-        for bomb in self.game_state['bombs']:
+        for bomb in [b for b in self.game_state['bombs'] if b[1] != 0]:
             if len(self.game_state['bombs'])==0:
                 break
             else:
@@ -133,8 +134,8 @@ class FeatureSelector():
     def distance_and_rel_coords_and_crates_around_next_agent(self):
         # L1-distance to next agent
         distance_to_next_agent = 30
-        closest_agent_x = agent_pos_x
-        closest_agent_y = agent_pos_y
+        closest_agent_x = self.agent_pos_x
+        closest_agent_y = self.agent_pos_y
         for agent in self.game_state['others']:
             other_agent_pos = agent[3]
             other_agent_pos_x = other_agent_pos[0]
@@ -154,7 +155,7 @@ class FeatureSelector():
         self.features.append(np.sum(self.crates_padded[closest_agent_x+self.PADCONST-1:closest_agent_x+self.PADCONST+2, closest_agent_y+self.PADCONST-1:closest_agent_y+self.PADCONST+2]))
 
 
-    def agent_pos(self):
+    def get_agent_pos(self):
         self.features.append(self.game_state['self'][3][0])
         self.features.append(self.game_state['self'][3][1])
 
@@ -163,7 +164,7 @@ class FeatureSelector():
         # Coins in radius 3
         coins_in_radius = 0
         for coin in self.game_state['coins']:
-            if coin[0]+self.PADCONST in range(self.agent_pos_x_pad - 3, self.agent_pos_x_pad + 4) and coin[1]+self.PADCONST in range(self.agent_pos_y_pad - 3, self.agent_pos_y + 4):
+            if coin[0]+self.PADCONST in range(self.agent_pos_x_pad - 3, self.agent_pos_x_pad + 4) and coin[1]+self.PADCONST in range(self.agent_pos_y_pad - 3, self.agent_pos_y_pad + 4):
                 coins_in_radius += 1
         self.features.append(coins_in_radius)
 
@@ -171,8 +172,8 @@ class FeatureSelector():
     def distance_and_rel_coords_and_crates_around_coin(self):
         # L1-distance to next coin
         distance_to_next_coin = 30
-        closest_coin_x = agent_pos_x
-        closest_coin_y = agent_pos_y
+        closest_coin_x = self.agent_pos_x
+        closest_coin_y = self.agent_pos_y
         for coin in self.game_state['coins']:
             coin_x = coin[0]
             coin_y = coin[1]
@@ -218,15 +219,28 @@ class FeatureSelector():
 
     def agent_at_border(self):
         # Agent is at left/right border (bool)
-        agent_at_leftright_border = 1 if agent_pos_x==1 or agent_pos_x==15 else 0
+        agent_at_leftright_border = 1 if self.agent_pos_x==1 or self.agent_pos_x==15 else 0
         # agent_at_leftright_border = 1 if (np.sum(self.walls_padded[self.agent_pos_x_pad-3:self.agent_pos_x_pad,self.agent_pos_y])==3 or np.sum(self.walls_padded[self.agent_pos_x_pad:self.agent_pos_x_pad+3, self.agent_pos_y_pad])==3) else 0
         self.features.append(agent_at_leftright_border)
 
         # Agent is at top/bottom border (bool)
-        agent_at_topbottom_border = 1 if agent_pos_y==1 or agent_pos_y==15 else 0
+        agent_at_topbottom_border = 1 if self.agent_pos_y==1 or self.agent_pos_y==15 else 0
         # agent_at_topbottom_border = 1 if (np.sum(self.walls_padded[self.agent_pos_x_pad,self.agent_pos_y-3:self.agent_pos_y_pad])==3 or np.sum(self.walls_padded[self.agent_pos_x_pad, self.agent_pos_y_pad:self.agent_pos_y_pad+3])==3) else 0
         self.features.append(agent_at_topbottom_border)
         # all_features.append(features)
+
+    def agent_position_relative_to_wall(self):
+        if np.sum(self.walls[agent_pos_x-1:agent_pos_x+2, agent_pos_y]) == 2:
+                agent_pos_rel_wall = 1
+            elif np.sum(self.walls[agent_pos_x, agent_pos_y-1:agent_pos_y+2]) == 2:
+                agent_pos_rel_wall = 2
+            else:
+                agent_pos_rel_wall = 0
+        self.features.append(agent_pos_rel_wall)
+
+    def search_free_space(self):
+        tree = MovementTree((x, y), game_state['field'], 7)
+        self.features.extend(tree.get_free_spaces()) # gives back 4 features
 
 
     def eval_all_features(self, game_state):
@@ -237,13 +251,15 @@ class FeatureSelector():
         self.crates_and_agents_explode()
         self.distance_from_bomb_and_cooldown()
         self.distance_and_rel_coords_and_crates_around_next_agent()
-        self.agent_pos()
+        self.get_agent_pos()
         self.coins_in_radius_3()
         self.distance_and_rel_coords_and_crates_around_coin()
         self.bomb_possible()
         self.scores()
         self.sum_crates()
         self.agent_at_border()
+        self.agent_position_relative_to_wall()
+        self.search_free_space()
 
         all_features = np.array(self.features)
         return all_features
