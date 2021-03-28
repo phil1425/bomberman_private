@@ -6,6 +6,10 @@ __pycache__/
 # C extensions
 *.so
 
+# pickle data
+*.pt
+
+
 # Distribution / packaging
 .Python
 build/
