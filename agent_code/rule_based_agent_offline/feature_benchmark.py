@@ -7,7 +7,7 @@
 ########################################################################
 import numpy as np
 import pickle
-
+from feature_extraction import FeatureSelector
 
 
 featurepickle = open("./featureset_large.pt", "rb")
@@ -19,13 +19,26 @@ labels = pickle.load(labelpickle)
 # all_features = []
 cols = ["Step Number", "Sum of crates radius 1", "Sum of crates radius 2", "Agent in explosion zone",
         "Crates explode if bomb here", "Agents explode if bomb here", "Straight bomb distance", "Straight bomb cooldown",
-        "Distance next agent", "Next agent rel x", "Next agent rel y", "Coins in radius 3", "Distance next coin", "Next coin rel x",
-        "Next coin rel y", "Bomb possible", "Agent score", "Other Agent 1 score", "Other Agent 2 score", "Other Agent 3 score",
-        "Sum all crates", "Crates around next coin", "Crates around next agent", "Agent at left/right border", "Agent at top/bottom border"]
+        "Distance next agent", "Next agent rel x", "Next agent rel y", "Crates around next agent", "Agent x", "Agent y", "Coins in radius 3", "Distance next coin", "Next coin rel x",
+        "Next coin rel y", "Crates around next coin", "Bomb possible", "Agent score", "Other Agent 1 score", "Other Agent 2 score", "Other Agent 3 score",
+        "Sum all crates", "Agent at left/right border", "Agent at top/bottom border", "Agent pos rel to wall", "Free space down", "Free space right", "Free space up", "Free space left"]
 
 #####################################
 #   call feature extractor here		#
 #####################################
+
+selector = FeatureSelector()
+
+# print(len(gamestates))
+all_features = np.zeros((len(gamestates), len(cols)))
+# print(all_features.shape)
+
+for idx, game_state in enumerate(gamestates):
+	features = selector.eval_all_features(game_state)
+	# print(features.shape)
+	all_features[idx] = features
+
+
 
 featurepickle.close()
 labelpickle.close()

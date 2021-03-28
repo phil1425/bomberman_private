@@ -230,16 +230,16 @@ class FeatureSelector():
         # all_features.append(features)
 
     def agent_position_relative_to_wall(self):
-        if np.sum(self.walls[agent_pos_x-1:agent_pos_x+2, agent_pos_y]) == 2:
-                agent_pos_rel_wall = 1
-            elif np.sum(self.walls[agent_pos_x, agent_pos_y-1:agent_pos_y+2]) == 2:
-                agent_pos_rel_wall = 2
-            else:
-                agent_pos_rel_wall = 0
+        if np.sum(self.walls[self.agent_pos_x-1:self.agent_pos_x+2, self.agent_pos_y]) == 2:
+            agent_pos_rel_wall = 1
+        elif np.sum(self.walls[self.agent_pos_x, self.agent_pos_y-1:self.agent_pos_y+2]) == 2:
+            agent_pos_rel_wall = 2
+        else:
+            agent_pos_rel_wall = 0
         self.features.append(agent_pos_rel_wall)
 
     def search_free_space(self):
-        tree = MovementTree((x, y), game_state['field'], 7)
+        tree = MovementTree((self.agent_pos_x, self.agent_pos_y), self.game_state['field'], 7)
         self.features.extend(tree.get_free_spaces()) # gives back 4 features
 
 
@@ -261,5 +261,4 @@ class FeatureSelector():
         self.agent_position_relative_to_wall()
         self.search_free_space()
 
-        all_features = np.array(self.features)
-        return all_features
+        return np.array(self.features)
