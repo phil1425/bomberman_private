@@ -221,16 +221,13 @@ def to_features(game_state):
     for bomb in game_state['bombs']:
         data[bomb[0][0], bomb[0][1], 2+bomb[1]] = 1
 
-    data[:,:,6] = game_state['explosion_map']
     for coin in game_state['coins']:
-        data[coin[0], coin[1], 7] = 1
+        data[coin[0], coin[1], 6] = 1
 
-    data[game_state['self'][3][0], game_state['self'][3][1], 8] = 1
-    data[game_state['self'][3][0], game_state['self'][3][1], 9] = int(game_state['self'][2])
+    data[game_state['self'][3][0], game_state['self'][3][1], 7] = 1
 
     for other in game_state['others']:
-        data[other[3][0], other[3][1], 10] = 1
-        data[other[3][0], other[3][1], 11] = int(other[2])
+        data[other[3][0], other[3][1], 8] = 1
     
     return data
 

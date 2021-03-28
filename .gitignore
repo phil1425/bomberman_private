@@ -129,3 +129,4 @@ game_state.p
 agent_code/baseline_1/policy.p
 agent_code/curiosity_3/policy.p
 agent_code/minimal_tree_1/diagnostics.csv
+agent_code/minimal_tree_1/actor.p

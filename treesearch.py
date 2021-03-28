@@ -46,8 +46,6 @@ class MovementTree():
                 self.num_free_spaces[new_node.direction] += 1
                 self.visited_spaces.append(new_coord)
                 self.directions.append(new_node.direction)
-
-
         
         return node.new_nodes
     

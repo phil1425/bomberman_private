@@ -6,16 +6,19 @@ states = pickle.load(open('featureset.pt', 'rb'))
 
 for state in states:
     selector = FeatureSelector(state)
-    selector.sum_of_crates_around_agent()
+    selector.agent_at_border()
     print(selector.features)
 
     plt.figure()
     vis_field = state['field'].copy()
     x, y = state['self'][3]
     vis_field[x, y] = 4
+
     #for bomb in state['bombs']:
     #    bx, by = bomb[0]
-    #    vis_field[bx, by] = 2
+    #    if bomb[1] != 0:
+    #        vis_field[bx, by] = 2
+
     for bomb in state['coins']:
         bx, by = bomb
         vis_field[bx, by] = 2

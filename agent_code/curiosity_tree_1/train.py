@@ -18,6 +18,49 @@ import sklearn
 import os
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
+encoding_dim = 16
+def build_encoder():
+    model = Sequential()
+    model.add(Input(shape=(17, 17, 8)))
+    model.add(Conv2D(8, 3, activation='relu', padding='same'))
+    model.add(Conv2D(8, 3, activation='relu', padding='same'))
+    model.add(MaxPool2D(2))
+    model.add(Conv2D(16, 3, activation='relu', padding='same'))
+    model.add(Conv2D(16, 3, activation='relu', padding='same'))
+    model.add(MaxPool2D(2))
+    model.add(Conv2D(16, 3, activation='relu', padding='same'))
+    model.add(Conv2D(4, 1, activation='relu', padding='same'))
+    model.add(Flatten())
+    model.add(Dense(encoding_dim, activation='linear'))
+
+    model.summary()
+    return model
+
+def build_inverse(encoder):
+    old_state = Input(shape=(17,17,12))
+    new_state = Input(shape=(17,17,12))
+
+    old_encoding = encoder(old_state)
+    new_encoding = encoder(new_state)
+
+    x = Concatenate(axis=-1)([old_encoding, new_encoding])
+    x = Dense(64, activation='relu')(x)
+    action = Dense(6, activation='softmax')(x)
+
+    model = Model(inputs=[old_state, new_state], outputs=[action])
+
+    model.summary()
+    return model
+
+def build_forward():
+    model = Sequential()
+    model.add(Input(shape=(encoding_dim+6)))
+    model.add(Dense(64, activation='relu'))
+    model.add(Dense(encoding_dim, activation='relu'))
+
+    model.summary()
+    return model
+
 def calc_reward(events, n):
     i_reward = 0
     reward = 0
@@ -54,22 +97,8 @@ def get_returns(events, n):
         returns.insert(0, gae+i_reward)
     return np.array(returns)
 
-def get_advantages(values, events, n):
-    gamma = 0.95
-    lmbda = 0.99
-    returns = []
-    gae = 0
-    for i in reversed(range(len(events))):
-        delta, i_reward = calc_reward(events[i], n)
-        gae = delta + gamma * lmbda * gae
-        returns.insert(0, gae + values[i] + i_reward)
-
-    adv = np.array(returns) - values
-    return returns, (adv - np.mean(adv)) / (np.std(adv) + 1e-10)
-
 def setup_training(self):
     self.actor = TreeModel(10000, (32,), (6,), 10)
-    self.critic = TreeModel(10000, (32,), (1,), 10, importance_sampling=False)
     self.feature_selector = FeatureSelector()
 
     self.features = []
@@ -98,18 +127,10 @@ def update_data(self, old_game_state, action, events, fit=False):
     self.events.append(events)
 
 def fit_model(self):
-    X = np.array(self.features)
-    if self.n == 1:
-        values = np.zeros(X.shape[0])
-    else:
-        values = self.critic.predict(X)
-    returns, advantages = get_advantages(values, self.events, self.n)
-
-    y_actor = np.array(self.labels)*np.array(advantages).reshape(-1, 1)
-    self.actor.fit(X, y_actor)
-
-    y_critic = np.array(returns).reshape(-1, 1)
-    self.critic.fit(X, y_critic)
+    returns = get_returns(self.events, self.n)
+    X_actor = np.array(self.features)
+    y_actor = np.array(self.labels)*np.array(returns).reshape(-1, 1)
+    self.actor.fit(X_actor, y_actor)
 
 def game_events_occurred(self, old_game_state, action, new_game_state, events):
     self.logger.info(events)
