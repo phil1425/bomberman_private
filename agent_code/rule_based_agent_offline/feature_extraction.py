@@ -1,5 +1,6 @@
 import numpy as np
 from treesearch import MovementTree
+from survivalsearch import SurvivalTree
 
 class FeatureSelector():
 
@@ -242,14 +243,17 @@ class FeatureSelector():
         tree = MovementTree((self.agent_pos_x, self.agent_pos_y), self.game_state['field'], 7)
         self.features.extend(tree.get_free_spaces()) # gives back 4 features
 
+    def survivable_space(self):
+        tree = SurvivalTree(self.game_state)
+        self.features.extend(tree.get_free_spaces()) # gives back 5 features
 
     def eval_all_features(self, game_state):
         self.setup(game_state)
         self.current_step()
         self.sum_of_crates_around_agent()
-        self.agent_in_explosion_zone()
+        # self.agent_in_explosion_zone()
         self.crates_and_agents_explode()
-        self.distance_from_bomb_and_cooldown()
+        # self.distance_from_bomb_and_cooldown()
         self.distance_and_rel_coords_and_crates_around_next_agent()
         self.get_agent_pos()
         self.coins_in_radius_3()
@@ -260,5 +264,6 @@ class FeatureSelector():
         self.agent_at_border()
         self.agent_position_relative_to_wall()
         self.search_free_space()
+        self.survivable_space()
 
         return np.array(self.features)

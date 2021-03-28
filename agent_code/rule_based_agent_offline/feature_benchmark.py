@@ -17,11 +17,12 @@ gamestates = pickle.load(featurepickle)
 labels = pickle.load(labelpickle)
 
 # all_features = []
-cols = ["Step Number", "Sum of crates radius 1", "Sum of crates radius 2", "Agent in explosion zone",
-        "Crates explode if bomb here", "Agents explode if bomb here", "Straight bomb distance", "Straight bomb cooldown",
+cols = ["Step Number", "Sum of crates radius 1", "Sum of crates radius 2", #"Agent in explosion zone",
+        "Crates explode if bomb here", "Agents explode if bomb here", #"Straight bomb distance", "Straight bomb cooldown",
         "Distance next agent", "Next agent rel x", "Next agent rel y", "Crates around next agent", "Agent x", "Agent y", "Coins in radius 3", "Distance next coin", "Next coin rel x",
         "Next coin rel y", "Crates around next coin", "Bomb possible", "Agent score", "Other Agent 1 score", "Other Agent 2 score", "Other Agent 3 score",
-        "Sum all crates", "Agent at left/right border", "Agent at top/bottom border", "Agent pos rel to wall", "Free space down", "Free space right", "Free space up", "Free space left"]
+        "Sum all crates", "Agent at left/right border", "Agent at top/bottom border", "Agent pos rel to wall", "Free space down", "Free space right", "Free space up", "Free space left",
+        "Survivable spaces down", "Survivable spaces right", "Survivable spaces up", "Survivable spaces left", "Survivable spaces wait"]
 
 #####################################
 #   call feature extractor here		#
@@ -96,7 +97,7 @@ y.columns = ["Action"]
 
 # print(y.head)
 feature_name = list(X.columns)
-num_feats = 12
+num_feats = 20
 
 # print(X.shape)
 y = y.stack().astype(float)
