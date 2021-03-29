@@ -111,3 +111,22 @@ screenshots/*.webm
 
 replays/
 .vscode/settings.json
+
+old_agents/*
+perceptron/*
+cnn/*
+screenshots/*
+replays/*
+.vscode/*
+*.h5
+*.npy
+*.pb
+*.index
+*.data-00000-of-00001
+agent_code/bernd-mumme_philipp-kollenz_vincent-mader.zip
+action.p
+game_state.p
+agent_code/baseline_1/policy.p
+agent_code/curiosity_3/policy.p
+agent_code/minimal_tree_1/diagnostics.csv
+agent_code/minimal_tree_1/actor.p
