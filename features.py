@@ -1,5 +1,6 @@
 import numpy as np
 from treesearch import MovementTree
+from treesearch_2 import SurvivalTree
 
 class FeatureSelector():
 
@@ -239,28 +240,70 @@ class FeatureSelector():
         self.features.append(agent_pos_rel_wall)
 
     def search_free_space(self):
-        x, y = self.game_state['self'][3]
-        tree = MovementTree((x, y), self.game_state['field'], 7)
+        tree = MovementTree((self.agent_pos_x, self.agent_pos_y), self.game_state['field'], 7)
         self.features.extend(tree.get_free_spaces()) # gives back 4 features
 
+    def survivable_space(self):
+        tree = SurvivalTree(self.game_state)
+        self.features.extend(tree.get_free_spaces()) # gives back 5 features
+
+    def eval_coin_features(self, game_state):
+        self.setup(game_state)
+        #self.current_step()
+        #self.sum_of_crates_around_agent()
+        ## self.agent_in_explosion_zone()
+        #self.crates_and_agents_explode()
+        ## self.distance_from_bomb_and_cooldown()
+        #self.distance_and_rel_coords_and_crates_around_next_agent()
+        #self.get_agent_pos()
+        #self.coins_in_radius_3()
+        self.distance_and_rel_coords_and_crates_around_coin()
+        #self.bomb_possible()
+        #self.scores()
+        #self.sum_crates()
+        #self.agent_at_border()
+        self.agent_position_relative_to_wall()
+        self.search_free_space()
+        #self.survivable_space()
+        return np.array(self.features)
+
+    def eval_singleplayer_features(self, game_state):
+        self.setup(game_state)
+        #self.current_step()
+        self.sum_of_crates_around_agent()
+        ## self.agent_in_explosion_zone()
+        self.crates_and_agents_explode()
+        ## self.distance_from_bomb_and_cooldown()
+        #self.distance_and_rel_coords_and_crates_around_next_agent()
+        #self.get_agent_pos()
+        #self.coins_in_radius_3()
+        self.distance_and_rel_coords_and_crates_around_coin()
+        self.bomb_possible()
+        #self.scores()
+        self.sum_crates()
+        #self.agent_at_border()
+        self.agent_position_relative_to_wall()
+        self.search_free_space()
+        self.survivable_space()
+        return np.array(self.features)
 
     def eval_all_features(self, game_state):
         self.setup(game_state)
-        self.current_step()
+        #self.current_step()
         self.sum_of_crates_around_agent()
-        self.agent_in_explosion_zone()
+        ## self.agent_in_explosion_zone()
         self.crates_and_agents_explode()
-        self.distance_from_bomb_and_cooldown()
+        ## self.distance_from_bomb_and_cooldown()
         self.distance_and_rel_coords_and_crates_around_next_agent()
-        self.get_agent_pos()
-        self.coins_in_radius_3()
+        #self.get_agent_pos()
+        #self.coins_in_radius_3()
         self.distance_and_rel_coords_and_crates_around_coin()
         self.bomb_possible()
-        self.scores()
+        #self.scores()
         self.sum_crates()
-        self.agent_at_border()
+        #self.agent_at_border()
         self.agent_position_relative_to_wall()
         self.search_free_space()
+        self.survivable_space()
 
-        all_features = np.array(self.features)
-        return all_features
+        return np.array(self.features)

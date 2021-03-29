@@ -7,7 +7,7 @@ class LinModel():
     def __init__(self, buffer_size, X_shape, y_shape, min_samples=1, importance_sampling=True):
         self.buffer_X = CircularArray((buffer_size, *X_shape))
         self.buffer_y = CircularArray((buffer_size, *y_shape))
-        self.model = linear_model.LinearRegression()
+        self.model = linear_model.Ridge(fit_intercept=True)
         self.fitted = False
         self.importance_sampling = importance_sampling
     

@@ -18,63 +18,81 @@ import sklearn
 import os
 os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
 
-def calc_reward(events, n):
+def calc_reward(self, events, n, i):
     i_reward = 0
     reward = 0
     if e.INVALID_ACTION in events or e.WAITED in events:
-        i_reward -= 0.1+(1-np.exp(-n/500))
+        i_reward -= 0.2
         reward -= 0.05
     else:
-        i_reward += 0.1*np.exp(-n/500)
+        i_reward += 0
         reward -= 0.05
 
     if e.CRATE_DESTROYED in events and not e.KILLED_SELF in events:
         c = events.count(e.CRATE_DESTROYED)
-        reward += c*0.1
+        reward += c*0.2
     if e.COIN_COLLECTED in events:
         reward += 1
     if e.KILLED_OPPONENT in events:
-        reward += 0.5
+        reward += 5#*(1-np.exp(-n/1000))
     if e.BOMB_EXPLODED in events and not e.KILLED_SELF in events:
-        reward += 0.05
+        reward += 0.5
     if e.KILLED_SELF in events or e.GOT_KILLED in events:
-        reward -= 1
+        reward -= 5#+4*(1-np.exp(-n/1000))
     if e.SURVIVED_ROUND in events:
-        reward += 1
+        reward += 2#+4*(1-np.exp(-n/500))
+
+    #movements = self.movements[:i]
+
+    #if len(movements) > 4:
+    #    if movements[-2:] == movements[-4:-2]:
+    #        i_reward -= 0.05
+
+    #if len(movements) > 6:
+    #    if movements[-3:] == movements[-6:-3]:
+    #        i_reward -= 0.05
+
+    position = self.visited[i]
+    self.logger.info(position)
+    self.logger.info(self.visited)
+    if i > 1:
+        if position in self.visited[:i-1]:
+            i_reward -= 0.05
+            #reward -= 0.05
+        else:
+            i_reward += 0.05
+            #reward -= 0.01
 
     return reward, i_reward
 
-def get_returns(events, n):
-    lmbda = 0.95
+def get_returns(self, events, n):
+    lmbda = 0.90
     returns = []
     gae = 0
     for i in reversed(range(len(events))):
-        delta, i_reward = calc_reward(events[i], n)
+        delta, i_reward = calc_reward(self, events[i], n, i)
         gae = delta + lmbda * gae
         returns.insert(0, gae+i_reward)
     return np.array(returns)
 
-def get_advantages(values, events, n):
-    gamma = 0.95
-    lmbda = 0.99
-    returns = []
-    gae = 0
-    for i in reversed(range(len(events))):
-        delta, i_reward = calc_reward(events[i], n)
-        gae = delta + gamma * lmbda * gae
-        returns.insert(0, gae + values[i] + i_reward)
-
-    adv = np.array(returns) - values
-    return returns, (adv - np.mean(adv)) / (np.std(adv) + 1e-10)
-
 def setup_training(self):
-    self.actor = TreeModel(10000, (32,), (6,), 10)
-    self.critic = TreeModel(10000, (32,), (1,), 10, importance_sampling=False)
+    if False:
+        self.actor = TreeModel(1000000, (24,), (6,), 20)
+    else:
+        self.actor = TreeModel(1000000, (24,), (6,), 20)
+        self.actor.load('actor.p')
+        data_X = np.load('actor_X.npy')
+        data_y = np.load('actor_y.npy')
+        self.actor.add_data(data_X, data_y)
+
     self.feature_selector = FeatureSelector()
 
     self.features = []
     self.labels = []
     self.events = []
+    self.movements = []
+    self.visited = []
+
     # 0 steps, 1 inv_moves, 2 waited, 3 crates, 4 coins, 5 kills, 6 deaths, 7 suicides
     self.diagnostics = [0, 0, 0, 0, 0, 0, 0, 0]
     self.history = []
@@ -97,19 +115,31 @@ def update_data(self, old_game_state, action, events, fit=False):
     self.labels.append(rot_action[0])
     self.events.append(events)
 
+    if e.MOVED_UP in events:
+        mov = 0
+    elif e.MOVED_DOWN in events:
+        mov = 1
+    elif e.MOVED_LEFT in events:
+        mov = 2
+    elif e.MOVED_RIGHT in events:
+        mov = 3
+    else:
+        mov = 4
+    self.movements.append(mov)
+    self.visited.append(old_game_state['self'][3])
+
 def fit_model(self):
     X = np.array(self.features)
-    if self.n == 1:
-        values = np.zeros(X.shape[0])
+    returns = get_returns(self, self.events, self.n)
+
+    y_actor = np.array(self.labels)*np.array(returns).reshape(-1, 1)
+    if self.n % 20 == 0 or self.n == 1:
+        self.actor.fit(X, y_actor)
     else:
-        values = self.critic.predict(X)
-    returns, advantages = get_advantages(values, self.events, self.n)
+        self.actor.add_data(X, y_actor)
 
-    y_actor = np.array(self.labels)*np.array(advantages).reshape(-1, 1)
-    self.actor.fit(X, y_actor)
-
-    y_critic = np.array(returns).reshape(-1, 1)
-    self.critic.fit(X, y_critic)
+    #y_critic = np.array(returns).reshape(-1, 1)
+    #self.critic.fit(X, y_critic)
 
 def game_events_occurred(self, old_game_state, action, new_game_state, events):
     self.logger.info(events)
@@ -134,6 +164,9 @@ def end_of_round(self, last_game_state, last_action, events):
     self.labels = []
     self.events = []
 
+    self.movements = []
+    self.visited = []
+
     self.history.append(self.diagnostics)
     self.diagnostics = [0, 0, 0, 0, 0, 0, 0, 0]
 
@@ -141,4 +174,6 @@ def end_of_round(self, last_game_state, last_action, events):
 
     if self.n%100 == 0:
         self.actor.save('actor.p')
+        np.save("actor_X.npy", self.actor.buffer_X.as_array())
+        np.save("actor_y.npy", self.actor.buffer_y.as_array())
         np.savetxt('diagnostics.csv', np.array(self.history))
