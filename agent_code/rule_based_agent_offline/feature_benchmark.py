@@ -9,6 +9,25 @@ import numpy as np
 import pickle
 from feature_extraction import FeatureSelector
 
+import pandas as pd
+import seaborn as sns
+import os 
+import scipy.stats as ss
+from collections import Counter
+import math 
+from matplotlib import pyplot as plt
+plt.rcParams["font.family"] = "Times New Roman"
+from scipy import stats
+
+def plot_settings(title, xlabel, ylabel):
+    
+    plt.figure(figsize=(8, 8))
+    plt.title(title, fontsize=14)
+    plt.xlabel(xlabel, fontsize=12)
+    plt.ylabel(ylabel, fontsize=12)
+    plt.grid(True)
+
+
 
 featurepickle = open("./featureset_large.pt", "rb")
 labelpickle = open("./labelset_large.pt", "rb")
@@ -25,7 +44,7 @@ cols = ["Step Number", "Sum of crates radius 1", "Sum of crates radius 2", #"Age
         "Survivable spaces down", "Survivable spaces right", "Survivable spaces up", "Survivable spaces left", "Survivable spaces wait"]
 
 #####################################
-#   call feature extractor here		#
+#   call feature extractor here     #
 #####################################
 
 selector = FeatureSelector()
@@ -35,9 +54,11 @@ all_features = np.zeros((len(gamestates), len(cols)))
 # print(all_features.shape)
 
 for idx, game_state in enumerate(gamestates):
-	features = selector.eval_all_features(game_state)
-	# print(features.shape)
-	all_features[idx] = features
+    features = selector.eval_all_features(game_state)
+    print("#####################################")
+    print(f"Extracting Feature {idx}")
+    print("#####################################\n\n")
+    all_features[idx] = features
 
 
 
@@ -47,14 +68,7 @@ labelpickle.close()
 
 
 
-import pandas as pd
-import seaborn as sns
-import os 
-import scipy.stats as ss
-from collections import Counter
-import math 
-from matplotlib import pyplot as plt
-from scipy import stats
+
 
 # print(all_features.shape)
 labels = np.array(labels)
@@ -97,7 +111,7 @@ y.columns = ["Action"]
 
 # print(y.head)
 feature_name = list(X.columns)
-num_feats = 20
+num_feats = 25
 
 # print(X.shape)
 y = y.stack().astype(float)
@@ -126,68 +140,87 @@ def cor_selector(X, y, num_feats):
     # feature selection? 0 for not select, 1 for select
     cor_support = [True if i in cor_feature else False for i in feature_name]
         
-    return cor_support, cor_feature
+    return cor_support, cor_feature, cor_list
 
-cor_support, cor_feature = cor_selector(X, y,num_feats)
+
+
+cor_support, cor_feature, cor_list = cor_selector(X, y, num_feats)
+feature_strength = np.sort(np.abs(cor_list))[-num_feats:]
 print(str(len(cor_feature)), 'selected features')
 
+plot_settings("Pearson Correlation with next Action", "Features", "Correlation Strength")
+plt.plot([idx for idx, feature in enumerate(cor_feature)], feature_strength, "x", label = 'Pearson')
+plt.savefig("./pearson.pdf")
+# plt.show()
 # print(cor_feature)
+print(cor_feature[-8:])
 
-from sklearn.feature_selection import SelectKBest
-from sklearn.feature_selection import chi2
+# from sklearn.feature_selection import SelectKBest
+# from sklearn.feature_selection import chi2
 from sklearn.preprocessing import MinMaxScaler
 X_norm = MinMaxScaler().fit_transform(X)
-chi_selector = SelectKBest(chi2, k=num_feats)
-chi_selector.fit(X_norm, y)
-chi_support = chi_selector.get_support()
-chi_feature = X.loc[:,chi_support].columns.tolist()
-print(str(len(chi_feature)), 'selected features')
+# chi_selector = SelectKBest(chi2, k=num_feats)
+# chi_selector.fit(X_norm, y)
+# chi_support = chi_selector.get_support()
+# chi_feature = X.loc[:,chi_support].columns.tolist()
+# print(str(len(chi_feature)), 'selected features')
 
 from sklearn.feature_selection import RFE
 from sklearn.linear_model import LogisticRegression
 rfe_selector = RFE(estimator=LogisticRegression(max_iter=1000), n_features_to_select=num_feats, step=10, verbose=5)
 rfe_selector.fit(X_norm, y)
 rfe_support = rfe_selector.get_support()
+rfe_params = rfe_selector.get_params()
 rfe_feature = X.loc[:,rfe_support].columns.tolist()
 print(str(len(rfe_feature)), 'selected features')
+
+# print(rfe_params)
 
 from sklearn.feature_selection import SelectFromModel
 from sklearn.linear_model import LogisticRegression
 
-embeded_lr_selector = SelectFromModel(LogisticRegression(solver='saga', penalty="l1", max_iter=1000), max_features=num_feats)
-embeded_lr_selector.fit(X_norm, y)
+embedded_lr_selector = SelectFromModel(LogisticRegression(solver='saga', penalty="l1", max_iter=1000), max_features=num_feats)
+embedded_lr_selector.fit(X_norm, y)
 
-embeded_lr_support = embeded_lr_selector.get_support()
-embeded_lr_feature = X.loc[:,embeded_lr_support].columns.tolist()
-print(str(len(embeded_lr_feature)), 'selected features')
+embedded_lr_support = embedded_lr_selector.get_support()
+embedded_lr_params = embedded_lr_selector.get_params()
+embedded_lr_feature = X.loc[:,embedded_lr_support].columns.tolist()
+print(str(len(embedded_lr_feature)), 'selected features')
 
-from sklearn.feature_selection import SelectFromModel
-from sklearn.ensemble import RandomForestClassifier
+# print(embedded_lr_params)
 
-embeded_rf_selector = SelectFromModel(RandomForestClassifier(n_estimators=100), max_features=num_feats)
-embeded_rf_selector.fit(X, y)
+# from sklearn.feature_selection import SelectFromModel
+# from sklearn.ensemble import RandomForestClassifier
 
-embeded_rf_support = embeded_rf_selector.get_support()
-embeded_rf_feature = X.loc[:,embeded_rf_support].columns.tolist()
-print(str(len(embeded_rf_feature)), 'selected features')
+# embedded_rf_selector = SelectFromModel(RandomForestClassifier(n_estimators=100), max_features=num_feats)
+# embedded_rf_selector.fit(X, y)
+
+# embedded_rf_support = embedded_rf_selector.get_support()
+# embedded_rf_feature = X.loc[:,embedded_rf_support].columns.tolist()
+# print(str(len(embedded_rf_feature)), 'selected features')
 
 
-from sklearn.feature_selection import SelectFromModel
-from lightgbm import LGBMClassifier
+# from sklearn.feature_selection import SelectFromModel
+# from lightgbm import LGBMClassifier
 
-lgbc=LGBMClassifier(n_estimators=500, learning_rate=0.05, num_leaves=32, colsample_bytree=0.2,
-            reg_alpha=3, reg_lambda=1, min_split_gain=0.01, min_child_weight=40)
+# lgbc=LGBMClassifier(n_estimators=500, learning_rate=0.05, num_leaves=32, colsample_bytree=0.2,
+#             reg_alpha=3, reg_lambda=1, min_split_gain=0.01, min_child_weight=40)
 
-embeded_lgb_selector = SelectFromModel(lgbc, max_features=num_feats)
-embeded_lgb_selector.fit(X, y)
+# embedded_lgb_selector = SelectFromModel(lgbc, max_features=num_feats)
+# embedded_lgb_selector.fit(X, y)
 
-embeded_lgb_support = embeded_lgb_selector.get_support()
-embeded_lgb_feature = X.loc[:,embeded_lgb_support].columns.tolist()
-print(str(len(embeded_lgb_feature)), 'selected features')
+# embedded_lgb_support = embedded_lgb_selector.get_support()
+# embedded_lgb_feature = X.loc[:,embedded_lgb_support].columns.tolist()
+# print(str(len(embedded_lgb_feature)), 'selected features')
 
 # put all selection together
-feature_selection_df = pd.DataFrame({'Feature':feature_name, 'Pearson':cor_support, 'Chi-2':chi_support, 'RFE':rfe_support, 'Logistics':embeded_lr_support,
-                                    'Random Forest':embeded_rf_support, 'LightGBM':embeded_lgb_support})
+feature_selection_df = pd.DataFrame({'Feature':feature_name, 
+                                    'Pearson':cor_support, 
+                                    #'Chi-2':chi_support, 
+                                    'RFE':rfe_support, 
+                                    'Lasso':embedded_lr_support})
+                                    #'Random Forest':embedded_rf_support, 
+                                    #'LightGBM':embedded_lgb_support})
 # count the selected times for each feature
 feature_selection_df['Total'] = np.sum(feature_selection_df, axis=1)
 # display the top 100
